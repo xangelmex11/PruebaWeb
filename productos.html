@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Productos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container my-5">
+        <h1 class="text-center mb-4">Gestión de Productos</h1>
+
+        <!-- Contenedor para los botones en la misma fila -->
+        <div class="d-flex justify-content-between mb-3">
+            <!-- Botón para regresar al inicio -->
+            <a href="/" class="btn btn-dark">Regresar al Inicio</a>
+
+            <!-- Botón para agregar producto -->
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal">Agregar Producto</button>
+        </div>
+
+        <!-- Tabla de productos -->
+        <div class="table-responsive mt-3">
+            <table class="table table-striped table-bordered">
+                <thead class="table-dark">
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Categoría</th>
+                        <th>Precio Unitario</th>
+                        <th>Unidad de Medida</th>
+                        <th>Fecha Agregada</th>
+                        <th>Disponible</th>
+                        <th>Proveedor</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for producto in productos %}
+                    <tr>
+                        <td>{{ producto.ProductoID }}</td>
+                        <td>{{ producto.Nombre }}</td>
+                        <td>{{ producto.Categoria }}</td>
+                        <td>{{ producto.Precio }}</td>
+                        <td>{{ producto.UnidadMedida }}</td>
+                        <td>{{ producto.FechaAgregado }}</td>
+                        <td>{{ 'Sí' if producto.Disponible else 'No' }}</td>
+                        <td>{{ producto.Proveedor }}</td>
+                        <td>
+                            <button class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editModal" onclick='fillEditForm({{ producto | tojson }})'>Editar</button>
+                            <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal" onclick="setDeleteAction('/productos/delete/{{ producto.ProductoID }}', '{{ producto.Nombre }}')">Eliminar</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Modal para Confirmar Eliminación -->
+        <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="deleteModalLabel">Confirmar Eliminación</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p id="deleteMessage">¿Estás seguro de que deseas eliminar este producto?</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <form id="deleteForm" method="POST" action="">
+                            <button type="submit" class="btn btn-danger">Eliminar</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal para Agregar Producto -->
+        <div class="modal fade" id="addModal" tabindex="-1" aria-labelledby="addModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addModalLabel">Agregar Producto</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <form method="POST" action="/productos/add">
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label for="nombre" class="form-label">Nombre</label>
+                                <input type="text" class="form-control" id="nombre" name="nombre" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="categoria" class="form-label">Categoría</label>
+                                <input type="text" class="form-control" id="categoria" name="categoria" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="precio" class="form-label">Precio Unitario</label>
+                                <input type="number" step="0.01" class="form-control" id="precio" name="precio" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="unidad_medida" class="form-label">Unidad de Medida</label>
+                                <input type="text" class="form-control" id="unidad_medida" name="unidad_medida" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="cantidad" class="form-label">Cantidad</label>
+                                <input type="number" class="form-control" id="cantidad" name="cantidad" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="disponible" class="form-label">Disponible</label>
+                                <input type="checkbox" id="disponible" name="disponible">
+                            </div>
+                            <div class="mb-3">
+                                <label for="proveedor_id" class="form-label">Proveedor</label>
+                                <select class="form-select" id="proveedor_id" name="proveedor_id" required>
+                                    <option value="">Seleccione un proveedor</option>
+                                    {% for proveedor in proveedores %}
+                                    <option value="{{ proveedor.ProveedorID }}">{{ proveedor.Nombre }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="submit" class="btn btn-success">Guardar</button>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal para Editar Producto -->
+        <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editModalLabel">Editar Producto</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <form method="POST" action="/productos/edit">
+                        <div class="modal-body">
+                            <input type="hidden" id="edit-id" name="id">
+                            <div class="mb-3">
+                                <label for="edit-nombre" class="form-label">Nombre</label>
+                                <input type="text" class="form-control" id="edit-nombre" name="nombre" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit-categoria" class="form-label">Categoría</label>
+                                <input type="text" class="form-control" id="edit-categoria" name="categoria" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit-precio" class="form-label">Precio Unitario</label>
+                                <input type="number" step="0.01" class="form-control" id="edit-precio" name="precio" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit-unidad_medida" class="form-label">Unidad de Medida</label>
+                                <input type="text" class="form-control" id="edit-unidad_medida" name="unidad_medida" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit-cantidad" class="form-label">Cantidad</label>
+                                <input type="number" class="form-control" id="edit-cantidad" name="cantidad" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit-disponible" class="form-label">Disponible</label>
+                                <input type="checkbox" id="edit-disponible" name="disponible">
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit-proveedor_id" class="form-label">Proveedor</label>
+                                <select class="form-select" id="edit-proveedor_id" name="proveedor_id" required>
+                                    <option value="">Seleccione un proveedor</option>
+                                    {% for proveedor in proveedores %}
+                                    <option value="{{ proveedor.ProveedorID }}">{{ proveedor.Nombre }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="submit" class="btn btn-success">Guardar Cambios</button>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function setDeleteAction(action, name) {
+            document.getElementById('deleteForm').action = action;
+            document.getElementById('deleteMessage').innerText = `¿Estás seguro de que deseas eliminar el producto "${name}"?`;
+        }
+
+        function fillEditForm(producto) {
+            document.getElementById('edit-id').value = producto.ProductoID;
+            document.getElementById('edit-nombre').value = producto.Nombre;
+            document.getElementById('edit-categoria').value = producto.Categoria;
+            document.getElementById('edit-precio').value = producto.Precio;
+            document.getElementById('edit-unidad_medida').value = producto.UnidadMedida;
+            document.getElementById('edit-cantidad').value = producto.Cantidad;
+            document.getElementById('edit-disponible').checked = producto.Disponible;
+            document.getElementById('edit-proveedor_id').value = producto.ProveedorID;
+        }
+    </script>
+</body>
+</html>
