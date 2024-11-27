@@ -1,4 +1,3 @@
-import os
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_mysqldb import MySQL
 
@@ -17,18 +16,14 @@ mysql = MySQL(app)
 
 # ------------------- MENÚ PRINCIPAL -------------------
 
-@app.route("/", methods=["GET", "HEAD"])
+@app.route('/')
 def menu():
-    if request.method == "HEAD":
-        return "", 200
     return render_template('menu.html')
 
 # ------------------- HISTORIAL -------------------
 
-@app.route("/historial", methods=["GET", "HEAD"])
+@app.route('/historial')
 def listar_historial():
-    if request.method == "HEAD":
-        return "", 200
     try:
         cursor = mysql.connection.cursor()
         cursor.execute("""
@@ -42,14 +37,14 @@ def listar_historial():
             LEFT JOIN Proveedores pr ON h.ProveedorID = pr.ProveedorID
         """)
         historial = cursor.fetchall()
+        cursor.close()  
         return render_template('historial.html', historial=historial)
     except Exception as e:
-        flash(f"Error al cargar el historial: {str(e)}", "danger")
+        flash(f"Error al cargar el historial: {str(e)}", "danger")  
         return render_template('historial.html', historial=[])
-    finally:
-        cursor.close()
 
-@app.route("/historial/add", methods=["POST"])
+
+@app.route('/historial/add', methods=['POST'])
 def historial_add():
     cantidad = request.form['cantidad']
     producto_id = request.form.get('producto_id')
@@ -64,31 +59,27 @@ def historial_add():
         cursor.execute(query, (cantidad, producto_id, proveedor_id))
         mysql.connection.commit()
         flash('Registro agregado al historial con éxito!', 'success')
+        return redirect(url_for('listar_historial'))
     except Exception as e:
         flash(f"Error al agregar al historial: {e}", "danger")
-    finally:
-        cursor.close()
-    return redirect(url_for('listar_historial'))
+        return redirect(url_for('listar_historial'))
 
-@app.route("/historial/delete/<int:id>", methods=["GET"])
+@app.route('/historial/delete/<int:id>', methods=['GET'])
 def historial_delete(id):
     try:
         cursor = mysql.connection.cursor()
         cursor.execute("DELETE FROM Historial WHERE HistorialID = %s", (id,))
         mysql.connection.commit()
         flash('Registro eliminado del historial con éxito!', 'success')
+        return redirect(url_for('listar_historial'))
     except Exception as e:
         flash(f"Error al eliminar el registro del historial: {e}", "danger")
-    finally:
-        cursor.close()
-    return redirect(url_for('listar_historial'))
+        return redirect(url_for('listar_historial'))
 
 # ------------------- PROVEEDORES -------------------
 
-@app.route("/index", methods=["GET", "HEAD"])
+@app.route('/index')
 def index():
-    if request.method == "HEAD":
-        return "", 200
     try:
         cursor = mysql.connection.cursor()
         cursor.execute("SELECT * FROM Proveedores")
@@ -97,15 +88,67 @@ def index():
     except Exception as e:
         flash(f"Error al cargar los proveedores: {e}", "danger")
         return render_template('index.html', proveedores=[])
+
+@app.route('/add', methods=['POST'])
+def add():
+    nombre = request.form['nombre']
+    telefono = request.form['telefono']
+    correo = request.form['correo']
+    direccion = request.form['direccion']
+
+    try:
+        cursor = mysql.connection.cursor()
+        query = "INSERT INTO Proveedores (Nombre, Telefono, Correo, Direccion) VALUES (%s, %s, %s, %s)"
+        cursor.execute(query, (nombre, telefono, correo, direccion))
+        mysql.connection.commit()
+        flash('Proveedor agregado con éxito!', 'success')
+        return redirect(url_for('index'))
+    except Exception as e:
+        flash(f"Error al agregar proveedor: {e}", "danger")
+        return redirect(url_for('index'))
+
+@app.route('/edit', methods=['POST'])
+def edit():
+    proveedor_id = request.form['id']
+    nombre = request.form['nombre']
+    telefono = request.form['telefono']
+    correo = request.form['correo']
+    direccion = request.form['direccion']
+
+    try:
+        cursor = mysql.connection.cursor()
+        query = """
+            UPDATE Proveedores
+            SET Nombre = %s, Telefono = %s, Correo = %s, Direccion = %s
+            WHERE ProveedorID = %s
+        """
+        cursor.execute(query, (nombre, telefono, correo, direccion, proveedor_id))
+        mysql.connection.commit()
+        flash('Proveedor actualizado con éxito!', 'success')
+        return redirect(url_for('index'))
+    except Exception as e:
+        flash(f"Error al actualizar proveedor: {e}", "danger")
+        return redirect(url_for('index'))
+
+
+@app.route('/delete/<int:id>', methods=['POST'])
+def delete(id):
+    try:
+        cursor = mysql.connection.cursor()
+        query = "DELETE FROM Proveedores WHERE ProveedorID = %s"
+        cursor.execute(query, (id,))
+        mysql.connection.commit()
+        flash('Proveedor eliminado con éxito!', 'success')
+    except Exception as e:
+        flash(f"Error al eliminar el proveedor: {e}", "danger")
     finally:
         cursor.close()
+    return redirect(url_for('index'))
 
 # ------------------- PRODUCTOS -------------------
 
-@app.route("/productos", methods=["GET", "HEAD"])
+@app.route('/productos')
 def productos_index():
-    if request.method == "HEAD":
-        return "", 200
     try:
         cursor = mysql.connection.cursor()
         cursor.execute("""
@@ -120,20 +163,69 @@ def productos_index():
     except Exception as e:
         flash(f"Error al cargar los productos: {e}", "danger")
         return render_template('productos.html', productos=[], proveedores=[])
-    finally:
-        cursor.close()
 
-# ------------------- MANEJO DEL PUERTO -------------------
+@app.route('/productos/add', methods=['POST'])
+def productos_add():
+    nombre = request.form['nombre']
+    categoria = request.form['categoria']
+    precio = request.form['precio']
+    unidad_medida = request.form['unidad_medida']
+    cantidad = request.form['cantidad']
+    disponible = request.form.get('disponible', 'off') == 'on'
+    proveedor_id = request.form['proveedor_id']
 
-if __name__ == "__main__":
-    # Detectar el puerto asignado por Render o usar el puerto local 5000 por defecto
-    port = int(os.environ.get("PORT", 5000))
-    
-    # Mensaje informativo sobre puertos
-    if port == 5000:
-        print("No se detectaron puertos abiertos, continuamos escaneando ...")
-    else:
-        print(f"Puerto detectado: {port}, iniciando la aplicación ...")
-    
-    # Ejecutar la aplicación en el puerto detectado
-    app.run(host="0.0.0.0", port=port, debug=True)
+    try:
+        cursor = mysql.connection.cursor()
+        query = """
+            INSERT INTO Productos (Nombre, Categoria, Precio, UnidadMedida, Cantidad, Disponible, ProveedorID)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """
+        cursor.execute(query, (nombre, categoria, precio, unidad_medida, cantidad, disponible, proveedor_id))
+        mysql.connection.commit()
+        flash('Producto agregado con éxito!', 'success')
+        return redirect(url_for('productos_index'))
+    except Exception as e:
+        flash(f"Error al agregar producto: {e}", "danger")
+        return redirect(url_for('productos_index'))
+
+@app.route('/productos/edit', methods=['POST'])
+def productos_edit():
+    producto_id = request.form['id']
+    nombre = request.form['nombre']
+    categoria = request.form['categoria']
+    precio = request.form['precio']
+    unidad_medida = request.form['unidad_medida']
+    cantidad = request.form['cantidad']
+    disponible = request.form.get('disponible', 'off') == 'on'
+    proveedor_id = request.form['proveedor_id']
+
+    try:
+        cursor = mysql.connection.cursor()
+        query = """
+            UPDATE Productos
+            SET Nombre = %s, Categoria = %s, Precio = %s, UnidadMedida = %s, Cantidad = %s, Disponible = %s, ProveedorID = %s
+            WHERE ProductoID = %s
+        """
+        cursor.execute(query, (nombre, categoria, precio, unidad_medida, cantidad, disponible, proveedor_id, producto_id))
+        mysql.connection.commit()
+        flash('Producto actualizado con éxito!', 'success')
+        return redirect(url_for('productos_index'))
+    except Exception as e:
+        flash(f"Error al actualizar producto: {e}", "danger")
+        return redirect(url_for('productos_index'))
+
+@app.route('/productos/delete/<int:id>', methods=['POST'])
+def productos_delete(id):
+    try:
+        cursor = mysql.connection.cursor()
+        query = "DELETE FROM Productos WHERE ProductoID = %s"
+        cursor.execute(query, (id,))
+        mysql.connection.commit()
+        flash('Producto eliminado con éxito!', 'success')
+        return redirect(url_for('productos_index'))
+    except Exception as e:
+        flash(f"Error al eliminar el producto: {e}", "danger")
+        return redirect(url_for('productos_index'))
+
+if __name__ == '__main__':
+    app.run(debug=True)
