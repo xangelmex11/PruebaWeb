@@ -1,3 +1,4 @@
+import os
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_mysqldb import MySQL
 
@@ -122,5 +123,17 @@ def productos_index():
     finally:
         cursor.close()
 
+# ------------------- MANEJO DEL PUERTO -------------------
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    # Detectar el puerto asignado por Render o usar el puerto local 5000 por defecto
+    port = int(os.environ.get("PORT", 5000))
+    
+    # Mensaje informativo sobre puertos
+    if port == 5000:
+        print("No se detectaron puertos abiertos, continuamos escaneando ...")
+    else:
+        print(f"Puerto detectado: {port}, iniciando la aplicación ...")
+    
+    # Ejecutar la aplicación en el puerto detectado
+    app.run(host="0.0.0.0", port=port, debug=True)
